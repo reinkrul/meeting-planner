@@ -63,6 +63,12 @@ func Validate(cfg *Config) error {
 	if !seen[cfg.InviteFromCalendar] {
 		return fmt.Errorf("invite_from_calendar %q does not match any configured calendar", cfg.InviteFromCalendar)
 	}
+	for _, c := range cfg.Calendars {
+		if c.ID == cfg.InviteFromCalendar && !c.Writable() {
+			return fmt.Errorf("invite_from_calendar %q is a read-only provider (%s); cannot create events on it",
+				c.ID, c.Provider)
+		}
+	}
 
 	if err := validateAvailability(cfg.Availability); err != nil {
 		return err
@@ -159,10 +165,20 @@ func validateCalendar(c CalendarConfig) error {
 		if os.Getenv(c.OX.PasswordEnv) == "" {
 			return fmt.Errorf("env var %s (referenced by ox.password_env) is not set", c.OX.PasswordEnv)
 		}
+	case "ics_url":
+		if c.ICSURL == nil {
+			return fmt.Errorf("provider=ics_url requires ics_url: block")
+		}
+		if c.ICSURL.URL == "" {
+			return fmt.Errorf("ics_url.url is required")
+		}
+		if c.ICSURL.CacheMinutes < 0 {
+			return fmt.Errorf("ics_url.cache_minutes must be >= 0")
+		}
 	case "":
-		return fmt.Errorf("provider is required (google, ics_file, caldav, or ox)")
+		return fmt.Errorf("provider is required (google, ics_file, caldav, ox, or ics_url)")
 	default:
-		return fmt.Errorf("unknown provider %q (supported: google, ics_file, caldav, ox)", c.Provider)
+		return fmt.Errorf("unknown provider %q (supported: google, ics_file, caldav, ox, ics_url)", c.Provider)
 	}
 	return nil
 }

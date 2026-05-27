@@ -26,7 +26,7 @@ func (s *Server) handleAdminConnect(w http.ResponseWriter, _ *http.Request) {
 		pending = append(pending, pendingCalendar{
 			ID:         c.ID,
 			Provider:   c.Provider,
-			ConnectURL: "/admin/calendars/" + c.ID + "/connect",
+			ConnectURL: s.basePath + "/admin/calendars/" + c.ID + "/connect",
 		})
 	}
 	_ = s.renderer.Render(w, "admin_connect", map[string]any{
@@ -79,5 +79,5 @@ func (s *Server) handleAdminOAuthCallback(w http.ResponseWriter, r *http.Request
 	}
 	// Send the operator back to the admin dashboard; if this was the last
 	// calendar, /admin will auto-disable from now on.
-	http.Redirect(w, r, "/admin/", http.StatusFound)
+	http.Redirect(w, r, s.basePath+"/admin/", http.StatusFound)
 }

@@ -160,6 +160,17 @@ func buildCalendarFromEnvMap(m map[string]string) (CalendarConfig, error) {
 			PasswordEnv: m["OX_PASSWORD_ENV"],
 			FolderID:    m["OX_FOLDER_ID"],
 		}
+	case "ics_url":
+		cm := 0
+		if s := m["ICS_URL_CACHE_MINUTES"]; s != "" {
+			if n, err := strconv.Atoi(s); err == nil {
+				cm = n
+			}
+		}
+		c.ICSURL = &ICSURLCalendarConfig{
+			URL:          m["ICS_URL_URL"],
+			CacheMinutes: cm,
+		}
 	case "":
 		return c, fmt.Errorf("PROVIDER not set")
 	default:

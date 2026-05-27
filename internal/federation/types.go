@@ -73,7 +73,8 @@ type PreferMorningsWire struct {
 func Build(a config.AvailabilityConfig, ownerTZ string, free []availability.FreeWindow) FreeBusyResponse {
 	wire := make([]TimeWindowWire, len(free))
 	for i, f := range free {
-		wire[i] = TimeWindowWire{Start: f.Start, End: f.End}
+		// Normalise to UTC so wire timestamps are uniformly formatted (`…Z`).
+		wire[i] = TimeWindowWire{Start: f.Start.UTC(), End: f.End.UTC()}
 	}
 	return FreeBusyResponse{
 		Timezone: ownerTZ,

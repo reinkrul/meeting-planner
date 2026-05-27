@@ -43,17 +43,25 @@ type OwnerConfig struct {
 
 type CalendarConfig struct {
 	ID       string                 `yaml:"id"`
-	Provider string                 `yaml:"provider"` // "google" | "ics_file" | "caldav" | "ox"
+	Provider string                 `yaml:"provider"` // "google" | "ics_file" | "caldav" | "ox" | "ics_url"
 	Google   *GoogleCalendarConfig  `yaml:"google,omitempty"`
 	ICSFile  *ICSFileCalendarConfig `yaml:"ics_file,omitempty"`
 	CalDAV   *CalDAVCalendarConfig  `yaml:"caldav,omitempty"`
 	OX       *OXCalendarConfig      `yaml:"ox,omitempty"`
+	ICSURL   *ICSURLCalendarConfig  `yaml:"ics_url,omitempty"`
 }
 
 // RequiresOAuth reports whether this calendar provider needs an interactive
 // OAuth flow before it can be used. Determines whether /admin auto-enables.
 func (c CalendarConfig) RequiresOAuth() bool {
 	return c.Provider == "google"
+}
+
+// Writable reports whether this provider supports CreateEvent — i.e. whether
+// it can serve as `invite_from_calendar`. Read-only providers like `ics_url`
+// only contribute busy time.
+func (c CalendarConfig) Writable() bool {
+	return c.Provider != "ics_url"
 }
 
 // GoogleCalendarConfig references env-var names rather than holding secrets directly.
@@ -87,6 +95,15 @@ type OXCalendarConfig struct {
 	Username     string `yaml:"username"`      // login name (usually email)
 	PasswordEnv  string `yaml:"password_env"`  // env var holding the password
 	FolderID     string `yaml:"folder_id"`     // calendar folder id (e.g. "31"); if empty, default calendar is discovered
+}
+
+// ICSURLCalendarConfig configures a read-only calendar source that fetches an
+// ICS feed over HTTP (e.g. Google Calendar's "Secret address in iCal format",
+// any published iCal feed). Contributes busy time only — cannot be used as
+// invite_from_calendar.
+type ICSURLCalendarConfig struct {
+	URL          string `yaml:"url"`            // full ICS feed URL
+	CacheMinutes int    `yaml:"cache_minutes"`  // how long to cache the fetched feed; 0 = default (10)
 }
 
 type AvailabilityConfig struct {

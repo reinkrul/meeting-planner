@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -26,6 +27,7 @@ type Server struct {
 	renderer       *web.Renderer
 	googleByCal    map[string]*googleprov.Provider // only for OAuth flow access
 	oauthStates    sync.Map                        // state token -> oauthStateRec
+	basePath       string                          // derived from public_base_url's path; "" for root mount
 }
 
 type oauthStateRec struct {
@@ -46,19 +48,42 @@ func New(cfg config.Config, st *store.State, bs *booking.Service, googleProvider
 		booking:     bs,
 		renderer:    r,
 		googleByCal: googleProviders,
+		basePath:    basePathFromPublicURL(cfg.Server.PublicBaseURL),
 	}, nil
 }
 
-// Handler returns the configured HTTP handler.
-func (s *Server) Handler() http.Handler {
-	r := chi.NewRouter()
+// basePathFromPublicURL extracts the prefix the app should mount under.
+// e.g. https://meet.example.com/meeting → "/meeting". Empty string means
+// mount at root.
+func basePathFromPublicURL(s string) string {
+	u, err := url.Parse(s)
+	if err != nil {
+		return ""
+	}
+	p := strings.TrimRight(u.Path, "/")
+	if p == "" {
+		return ""
+	}
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return p
+}
 
-	r.Get("/", s.handleLanding)
-	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+// BasePath exposes the configured subpath prefix (read-only).
+func (s *Server) BasePath() string { return s.basePath }
+
+// Handler returns the configured HTTP handler. If a subpath base is
+// configured (via public_base_url's path), routes are mounted under it.
+func (s *Server) Handler() http.Handler {
+	inner := chi.NewRouter()
+
+	inner.Get("/", s.handleLanding)
+	inner.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	r.Route("/c/{token}", func(r chi.Router) {
+	inner.Route("/c/{token}", func(r chi.Router) {
 		r.Use(s.requireCapabilityToken)
 		r.Get("/", s.handleBookingForm)
 		r.Get("/participants/row", s.handleParticipantRow)
@@ -67,14 +92,19 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/freebusy", s.handleFreeBusy)
 	})
 
-	r.Route("/admin", func(r chi.Router) {
+	inner.Route("/admin", func(r chi.Router) {
 		r.Use(s.requireAdminEnabled)
 		r.Get("/", s.handleAdminConnect)
 		r.Get("/calendars/{id}/connect", s.handleAdminOAuthStart)
 		r.Get("/calendars/{id}/callback", s.handleAdminOAuthCallback)
 	})
 
-	return r
+	if s.basePath == "" {
+		return inner
+	}
+	outer := chi.NewRouter()
+	outer.Mount(s.basePath, inner)
+	return outer
 }
 
 // requireCapabilityToken validates {token} against the current capability

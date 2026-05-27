@@ -95,7 +95,7 @@ A guest can list extra attendees who *also* run meeting-planner by pasting their
 
 The `calendars: []` list takes any number of entries of any provider type. **One** of them is named in `invite_from_calendar:` — that's where new events get created and from which invites go out. **All** of them contribute their busy time to availability calculations.
 
-So you can mix: a Google work calendar (booking + invites) plus an OX personal calendar (just blocks slots) plus an ICS-file private agenda (just blocks slots).
+So you can mix: a Google work calendar (booking + invites) plus an OX personal calendar (just blocks slots) plus an ICS-file private agenda (just blocks slots) plus a Google personal calendar pulled via its secret iCal URL (read-only — blocks slots without any OAuth setup). See `configs/config.ics-url.example.yaml` for the read-only-feed example.
 
 ```yaml
 calendars:
@@ -108,9 +108,15 @@ calendars:
   - id: "private"
     provider: "ics_file"
     ics_file: {...}
+  - id: "google-personal-readonly"
+    provider: "ics_url"
+    ics_url:
+      url: "https://calendar.google.com/calendar/ical/.../private-.../basic.ics"
 
 invite_from_calendar: "work"   # only this one gets written to
 ```
+
+Read-only providers (`ics_url`) can't be used as `invite_from_calendar` — validation rejects it at startup.
 
 ---
 
@@ -196,6 +202,20 @@ The running server picks up changes to `state.json` via mtime, so the CLI comman
 `/admin` is enabled **only** while at least one OAuth-requiring calendar lacks tokens. It returns 404 the rest of the time — there is no admin password (the setup window is bounded by you triggering it).
 
 ---
+
+## Deploying behind a reverse proxy (subpath)
+
+If you want the app reachable at `https://example.com/meeting` rather than at its own domain, set `server.public_base_url` to include the path:
+
+```yaml
+server:
+  listen: ":8080"
+  public_base_url: "https://example.com/meeting"
+```
+
+The app derives the prefix from that URL and mounts all routes under it. Configure your reverse proxy to forward `/meeting/*` to the app **without** stripping the prefix.
+
+If you use Google OAuth, the registered redirect URI in Google Cloud Console must include the subpath too — `https://example.com/meeting/admin/calendars/<id>/callback`.
 
 ## Docker
 

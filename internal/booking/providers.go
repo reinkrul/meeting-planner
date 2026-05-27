@@ -7,6 +7,7 @@ import (
 	"github.com/reinkrul/meeting-planner/internal/calendar/caldav"
 	googleprov "github.com/reinkrul/meeting-planner/internal/calendar/google"
 	"github.com/reinkrul/meeting-planner/internal/calendar/icsfile"
+	"github.com/reinkrul/meeting-planner/internal/calendar/icsurl"
 	"github.com/reinkrul/meeting-planner/internal/calendar/ox"
 	"github.com/reinkrul/meeting-planner/internal/config"
 	"github.com/reinkrul/meeting-planner/internal/store"
@@ -34,6 +35,8 @@ func BuildProviders(cfg config.Config, st *store.State) (map[string]calendar.Pro
 				return nil, fmt.Errorf("calendar %q: %w", c.ID, err)
 			}
 			out[c.ID] = p
+		case "ics_url":
+			out[c.ID] = icsurl.New(c.ID, *c.ICSURL)
 		default:
 			return nil, fmt.Errorf("calendar %q: unknown provider %q", c.ID, c.Provider)
 		}

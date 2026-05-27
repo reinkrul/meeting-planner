@@ -17,7 +17,7 @@ import (
 
 func (s *Server) handleBookingForm(w http.ResponseWriter, r *http.Request) {
 	token := chi.URLParam(r, "token")
-	base := "/c/" + token
+	base := s.basePath + "/c/" + token
 	name, email := readUserCookies(r)
 	_ = s.renderer.Render(w, "booking_form", map[string]any{
 		"Title":             "Book a meeting",
@@ -58,7 +58,7 @@ func (s *Server) handleSlots(w http.ResponseWriter, r *http.Request) {
 	tz, _ := time.LoadLocation(s.cfg.Owner.Timezone)
 	token := chi.URLParam(r, "token")
 	_ = s.renderer.RenderFragment(w, "slots", map[string]any{
-		"ConfirmURL":      "/c/" + token + "/confirm",
+		"ConfirmURL":      s.basePath + "/c/" + token + "/confirm",
 		"InitiatorName":   req.Initiator.Name,
 		"InitiatorEmail":  req.Initiator.Email,
 		"Title":           req.Title, // forwarded back via hidden field

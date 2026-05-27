@@ -1,0 +1,52 @@
+# meeting-planner — example with a read-only ICS URL feed alongside a
+# writable calendar. Use this for any calendar you want to *block slots
+# from* but never write events to: Google personal "Secret iCal URL",
+# a published office calendar, etc.
+#
+# Recurring events (RRULE + EXDATE) are expanded automatically.
+# Feed is cached for `cache_minutes` to avoid hammering the upstream.
+
+server:
+  listen: ":8080"
+  public_base_url: "http://localhost:8080"
+
+data_dir: ".scratch/data-with-ics-url"
+
+owner:
+  display_name: "Your Name"
+  timezone: "Europe/Amsterdam"
+
+calendars:
+  # The writable calendar — bookings get created here.
+  - id: "work"
+    provider: "ox"
+    ox:
+      server_url:   "https://appsuite.YOUR-HOSTER.example"
+      username:     "you@yourdomain.example"
+      password_env: "OX_PASSWORD"
+
+  # Read-only: contributes busy time to availability calculations.
+  # The URL is itself a capability — keep it private.
+  - id: "personal-google"
+    provider: "ics_url"
+    ics_url:
+      # In Google Calendar: Settings → click your calendar in
+      # "Settings for my calendars" → "Integrate calendar" →
+      # "Secret address in iCal format".
+      url: "https://calendar.google.com/calendar/ical/YOUR_EMAIL%40gmail.com/private-XXXXXXXX/basic.ics"
+      cache_minutes: 10
+
+invite_from_calendar: "work"   # ics_url cannot be picked here; it's read-only
+
+availability:
+  working_days: [mon, tue, wed, thu, fri]
+  working_hours: { start: "09:00", end: "17:00" }
+  slot_granularity_minutes: 15
+  min_notice_hours: 24
+  max_horizon_days: 14
+  buffer_minutes: 0
+  rules:
+    avoid_lunch:               { enabled: true, start: "12:00", end: "13:00", penalty: 50 }
+    avoid_back_to_back:        { enabled: true, gap_minutes: 15, penalty: 30 }
+    avoid_long_busy_stretches: { enabled: true, max_stretch_minutes: 240, penalty_per_30min_over: 20 }
+    prefer_mornings:           { enabled: false, penalty: 10 }
