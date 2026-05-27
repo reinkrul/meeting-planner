@@ -1,5 +1,7 @@
 # meeting-planner
 
+> 🧪 **AI-driven development experiment.** Every line of this project — design, code, tests, docs — was produced by working with an AI coding agent. The session log (decisions, dead ends, time, rough cost) is in [`EXPERIMENT.md`](EXPERIMENT.md). Source material for a planned blog post.
+
 Self-hosted, single-binary meeting planner. Share a link, others pick a time, you get a real calendar invite — without exposing your event details and without depending on a SaaS product. Coordinates across multiple of your own calendars and across other people's instances.
 
 - One static Go binary, distroless Docker image, no database.
