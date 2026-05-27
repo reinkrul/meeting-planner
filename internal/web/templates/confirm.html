@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="card">
+  <div class="hero">
+    <div class="check">✓</div>
+    <h1 style="margin-bottom: 0.25rem;">You're booked</h1>
+    <p style="margin: 0;">Invites are on their way to everyone in the meeting.</p>
+  </div>
+
+  <dl class="summary">
+    <div><dt>When</dt><dd>{{.LocalStartDisplay}} – {{.LocalEndDisplay}}</dd></div>
+    <div><dt>What</dt><dd>{{.Title}}</dd></div>
+    <div><dt>Attendees</dt><dd>{{range $i, $a := .Attendees}}{{if $i}}<br>{{end}}{{$a}}{{end}}</dd></div>
+  </dl>
+</div>
+{{end}}

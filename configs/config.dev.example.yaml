@@ -1,0 +1,47 @@
+# meeting-planner — local dev config. ICS-file backend only, no OAuth.
+# Pre-seed .scratch/calendars/owner.ics with some VEVENTs before booking.
+
+server:
+  listen: ":8080"
+  public_base_url: "http://localhost:8080"
+
+data_dir: ".scratch/data"
+
+owner:
+  display_name: "Dev Owner"
+  timezone: "Europe/Amsterdam"
+
+calendars:
+  - id: "owner"
+    provider: "ics_file"
+    ics_file:
+      path: ".scratch/calendars/owner.ics"
+      organizer_name:  "Dev Owner"
+      organizer_email: "dev@example.com"
+
+invite_from_calendar: "owner"
+
+availability:
+  working_days: [mon, tue, wed, thu, fri]
+  working_hours: { start: "09:00", end: "17:00" }
+  slot_granularity_minutes: 15
+  min_notice_hours: 0     # easy testing: allow same-hour bookings
+  max_horizon_days: 14
+  buffer_minutes: 0
+  rules:
+    avoid_lunch:
+      enabled: true
+      start: "12:00"
+      end:   "13:00"
+      penalty: 50
+    avoid_back_to_back:
+      enabled: true
+      gap_minutes: 15
+      penalty: 30
+    avoid_long_busy_stretches:
+      enabled: true
+      max_stretch_minutes: 240
+      penalty_per_30min_over: 20
+    prefer_mornings:
+      enabled: false
+      penalty: 10

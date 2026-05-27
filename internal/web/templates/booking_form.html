@@ -1,0 +1,44 @@
+{{define "content"}}
+<h1>Book a meeting with {{.OwnerName}}</h1>
+<p>Tell us a little about you and the meeting, and we'll find times that work.</p>
+
+<form hx-post="{{.SlotsURL}}" hx-target="#slots" hx-swap="innerHTML">
+  <div class="card">
+    <label for="initiator_name">Your name</label>
+    <input id="initiator_name" type="text" name="initiator_name" required placeholder="Jane Doe" value="{{.InitiatorName}}">
+
+    <label for="initiator_email">Your email</label>
+    <input id="initiator_email" type="email" name="initiator_email" required placeholder="jane@example.com" value="{{.InitiatorEmail}}">
+  </div>
+
+  <div class="card">
+    <label for="title">What's it about?</label>
+    <input id="title" type="text" name="title" placeholder="Quick catch-up">
+
+    <label for="description">Anything we should know? (optional)</label>
+    <textarea id="description" name="description" rows="2" placeholder="A short note for the calendar invite"></textarea>
+
+    <label for="duration_minutes">How long?</label>
+    <select id="duration_minutes" name="duration_minutes">
+      <option value="15">15 minutes</option>
+      <option value="30" selected>30 minutes</option>
+      <option value="45">45 minutes</option>
+      <option value="60">1 hour</option>
+      <option value="90">1.5 hours</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <label style="margin-bottom: 0.5rem;">Other attendees (optional)</label>
+    <p style="margin: 0 0 0.5rem;">Add anyone else who should be invited. If they also use meeting-planner, paste their booking link so we can find a time that works for all of you.</p>
+    <div id="participants"></div>
+    <button type="button" class="ghost" hx-get="{{.ParticipantRowURL}}" hx-target="#participants" hx-swap="beforeend">+ Add attendee</button>
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="primary">Find available times</button>
+  </div>
+</form>
+
+<div id="slots"></div>
+{{end}}

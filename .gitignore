@@ -1,0 +1,14 @@
+.scratch/
+/data/
+*.test
+*.out
+*.exe
+.DS_Store
+.idea/
+.vscode/
+# Claude Code per-project local settings (allow-lists, etc.) — keep out of git
+.claude/
+# Configs: ignore everything in configs/ except the .example.yaml templates.
+# Each user copies an example to configs/config.<name>.yaml locally.
+configs/*.yaml
+!configs/*.example.yaml

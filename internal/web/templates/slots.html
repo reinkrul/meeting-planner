@@ -1,0 +1,48 @@
+{{define "content"}}
+{{range .Warnings}}
+  <div class="warn">{{.}}</div>
+{{end}}
+
+{{if not .Days}}
+  <div class="card">
+    <p style="margin: 0; color: var(--text);">No times match all attendees within the next two weeks. Try a shorter meeting or remove an attendee.</p>
+  </div>
+{{else}}
+  <h2>Pick a time</h2>
+  <p>Tap a day to see its available times. Times marked <em>· less ideal</em> overlap a lunch break or sit between back-to-back meetings.</p>
+
+  <form hx-post="{{.ConfirmURL}}" hx-target="body" hx-swap="innerHTML">
+    <input type="hidden" name="initiator_name" value="{{.InitiatorName}}">
+    <input type="hidden" name="initiator_email" value="{{.InitiatorEmail}}">
+    <input type="hidden" name="title" value="{{.Title}}">
+    <input type="hidden" name="description" value="{{.Description}}">
+    <input type="hidden" name="duration_minutes" value="{{.DurationMinutes}}">
+    {{range $i, $p := .Others}}
+      <input type="hidden" name="participant_name" value="{{$p.Name}}">
+      <input type="hidden" name="participant_email" value="{{$p.Email}}">
+      <input type="hidden" name="participant_peer_url" value="{{$p.PeerURL}}">
+    {{end}}
+
+    {{range $i, $day := .Days}}
+      <details class="day" {{if eq $i 0}}open{{end}}>
+        <summary>
+          <span>{{$day.Label}}<span class="count">· {{len $day.Slots}} slot{{if ne (len $day.Slots) 1}}s{{end}}</span></span>
+        </summary>
+        <div class="slots-grid">
+          {{range $day.Slots}}
+            <label class="chip">
+              <input type="radio" name="slot_start" value="{{.Candidate.Start.Format "2006-01-02T15:04:05Z07:00"}}" required>
+              <span class="when">{{.LocalStartDisplay}}</span>
+              {{if gt .Total 0}}<span class="meta">less ideal</span>{{end}}
+            </label>
+          {{end}}
+        </div>
+      </details>
+    {{end}}
+
+    <div class="actions">
+      <button type="submit" class="primary">Confirm booking</button>
+    </div>
+  </form>
+{{end}}
+{{end}}

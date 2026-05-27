@@ -1,0 +1,21 @@
+{{define "content"}}
+<h1>Admin — connect calendars</h1>
+<p>One-time setup. This page is reachable only while a calendar still needs OAuth.</p>
+
+{{if not .Pending}}
+  <p class="ok">All calendars are connected. /admin will return 404 on the next request.</p>
+{{else}}
+  <ul>
+    {{range .Pending}}
+      <li>
+        <strong>{{.ID}}</strong> ({{.Provider}})
+        — <a href="{{.ConnectURL}}">Connect with Google</a>
+      </li>
+    {{end}}
+  </ul>
+{{end}}
+
+<h2>Your booking link</h2>
+<p>Share this with anyone you want to be able to book a meeting with you. Anyone with the link can request a slot.</p>
+<p><code>{{.CapabilityURL}}</code></p>
+{{end}}

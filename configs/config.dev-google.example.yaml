@@ -1,0 +1,47 @@
+# Local-dev config with a real Google Calendar.
+# Run AFTER creating an OAuth client (see README / instructions in chat).
+# Required env vars:
+#   GOOGLE_CLIENT_ID
+#   GOOGLE_CLIENT_SECRET
+
+server:
+  listen: ":8080"
+  public_base_url: "http://localhost:8080"
+
+data_dir: ".scratch/data-google"
+
+owner:
+  display_name: "Dev Owner"
+  timezone: "Europe/Amsterdam"
+
+calendars:
+  - id: "personal"
+    provider: "google"
+    google:
+      client_id_env: "GOOGLE_CLIENT_ID"
+      client_secret_env: "GOOGLE_CLIENT_SECRET"
+      calendar_id: "primary"
+
+invite_from_calendar: "personal"
+
+availability:
+  working_days: [mon, tue, wed, thu, fri]
+  working_hours: { start: "09:00", end: "17:00" }
+  slot_granularity_minutes: 15
+  min_notice_hours: 0
+  max_horizon_days: 14
+  buffer_minutes: 0
+  rules:
+    avoid_lunch:
+      enabled: true
+      start: "12:00"
+      end:   "13:00"
+      penalty: 50
+    avoid_back_to_back:
+      enabled: true
+      gap_minutes: 15
+      penalty: 30
+    avoid_long_busy_stretches:
+      enabled: true
+      max_stretch_minutes: 240
+      penalty_per_30min_over: 20

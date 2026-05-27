@@ -1,0 +1,54 @@
+# meeting-planner — generic CalDAV calendar (HTTP Basic auth: username + password).
+#
+# Works with:
+#   - Apple iCloud   (app-specific password)
+#   - Fastmail       (app-specific password)
+#   - Nextcloud      (account or app password)
+#   - Proton         (via Proton Bridge)
+#   - Most self-hosted CalDAV servers (Radicale, Baïkal, SOGo, …)
+#
+# Does NOT work with:
+#   - Google Calendar      → CalDAV requires OAuth; use the `google` provider.
+#   - Hostnet App Suite    → CalDAV is gated; use the `ox` provider.
+#
+# 1. Copy to configs/config.<name>.yaml and fill in your details.
+# 2. Put your password in .scratch/env.sh:  export CALDAV_PASSWORD="…"
+# 3. Run:  scripts/run.sh <name>
+
+server:
+  listen: ":8080"
+  public_base_url: "http://localhost:8080"
+
+data_dir: ".scratch/data-caldav"
+
+owner:
+  display_name: "Your Name"
+  timezone: "Europe/Amsterdam"
+
+calendars:
+  - id: "personal"
+    provider: "caldav"
+    caldav:
+      # The calendar collection URL. Examples:
+      #   Apple iCloud:  https://caldav.icloud.com/<account-id>/calendars/home/
+      #   Fastmail:      https://caldav.fastmail.com/dav/calendars/user/USER/CAL_ID/
+      #   Nextcloud:     https://your-nc.example/remote.php/dav/calendars/USER/personal/
+      server_url:   "https://caldav.YOUR-PROVIDER.example/path/to/calendar/"
+      username:     "you@yourdomain.example"
+      password_env: "CALDAV_PASSWORD"
+      organizer_cn: "Your Name"
+
+invite_from_calendar: "personal"
+
+availability:
+  working_days: [mon, tue, wed, thu, fri]
+  working_hours: { start: "09:00", end: "17:00" }
+  slot_granularity_minutes: 15
+  min_notice_hours: 24
+  max_horizon_days: 14
+  buffer_minutes: 0
+  rules:
+    avoid_lunch:               { enabled: true, start: "12:00", end: "13:00", penalty: 50 }
+    avoid_back_to_back:        { enabled: true, gap_minutes: 15, penalty: 30 }
+    avoid_long_busy_stretches: { enabled: true, max_stretch_minutes: 240, penalty_per_30min_over: 20 }
+    prefer_mornings:           { enabled: false, penalty: 10 }

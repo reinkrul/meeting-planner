@@ -1,0 +1,45 @@
+# Second instance for two-instance federation testing. Different lunch
+# window and stretch cap so you can verify peer preferences influence
+# scoring from the first instance's UI.
+
+server:
+  listen: ":8081"
+  public_base_url: "http://localhost:8081"
+
+data_dir: ".scratch/data2"
+
+owner:
+  display_name: "Dev Peer"
+  timezone: "Europe/Amsterdam"
+
+calendars:
+  - id: "peer"
+    provider: "ics_file"
+    ics_file:
+      path: ".scratch/calendars/peer.ics"
+      organizer_name:  "Dev Peer"
+      organizer_email: "peer@example.com"
+
+invite_from_calendar: "peer"
+
+availability:
+  working_days: [mon, tue, wed, thu, fri]
+  working_hours: { start: "09:00", end: "17:00" }
+  slot_granularity_minutes: 15
+  min_notice_hours: 0
+  max_horizon_days: 14
+  buffer_minutes: 0
+  rules:
+    avoid_lunch:
+      enabled: true
+      start: "12:30"        # different from owner
+      end:   "13:30"
+      penalty: 50
+    avoid_back_to_back:
+      enabled: true
+      gap_minutes: 15
+      penalty: 30
+    avoid_long_busy_stretches:
+      enabled: true
+      max_stretch_minutes: 180   # stricter than owner
+      penalty_per_30min_over: 20

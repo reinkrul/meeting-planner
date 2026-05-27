@@ -1,0 +1,57 @@
+# meeting-planner — production-ish example with Google Calendar.
+# Every field can also be overridden via MP_<UPPER_YAML_PATH> env vars.
+# Lists (calendars) live here OR in MP_CALENDARS_<N>_* env vars (not both).
+
+server:
+  listen: ":8080"
+  public_base_url: "https://meet.example.com"   # used to build the capability URL
+
+data_dir: "/data"                                # state.json + ics files live here
+
+owner:
+  display_name: "Your Name"
+  timezone: "Europe/Amsterdam"
+
+# Secrets are referenced by env-var NAME, never inlined.
+calendars:
+  - id: "work"
+    provider: "google"
+    google:
+      client_id_env: "GOOGLE_CLIENT_ID_WORK"
+      client_secret_env: "GOOGLE_CLIENT_SECRET_WORK"
+      calendar_id: "primary"
+  - id: "personal"
+    provider: "google"
+    google:
+      client_id_env: "GOOGLE_CLIENT_ID_PERSONAL"
+      client_secret_env: "GOOGLE_CLIENT_SECRET_PERSONAL"
+      calendar_id: "primary"
+
+# The calendar on which newly-booked events are created (and from which the
+# Google invite emails are sent).
+invite_from_calendar: "work"
+
+availability:
+  working_days: [mon, tue, wed, thu, fri]
+  working_hours: { start: "09:00", end: "17:00" }
+  slot_granularity_minutes: 15
+  min_notice_hours: 24
+  max_horizon_days: 30
+  buffer_minutes: 0
+  rules:
+    avoid_lunch:
+      enabled: true
+      start: "12:00"
+      end:   "13:00"
+      penalty: 50
+    avoid_back_to_back:
+      enabled: true
+      gap_minutes: 15
+      penalty: 30
+    avoid_long_busy_stretches:
+      enabled: true
+      max_stretch_minutes: 240
+      penalty_per_30min_over: 20
+    prefer_mornings:
+      enabled: false
+      penalty: 10

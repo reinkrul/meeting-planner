@@ -1,0 +1,53 @@
+# meeting-planner — Open-Xchange App Suite via the chronos HTTP API.
+# Works against any OX-based mail/calendar host (e.g. Hostnet, mailbox.org,
+# many EU hosters). No app project, no OAuth — just username + password.
+#
+# 1. Copy this file to configs/config.<name>.yaml (e.g. config.hostnet.yaml).
+# 2. Fill in your account details below.
+# 3. Put your password in .scratch/env.sh:  export OX_PASSWORD="…"
+# 4. Run:  scripts/run.sh <name>
+
+server:
+  listen: ":8080"
+  public_base_url: "http://localhost:8080"
+
+data_dir: ".scratch/data-ox"
+
+owner:
+  display_name: "Your Name"
+  timezone: "Europe/Amsterdam"
+
+calendars:
+  - id: "personal"
+    provider: "ox"
+    ox:
+      server_url:   "https://appsuite.YOUR-HOSTER.example"   # e.g. https://appsuite.hostnet.nl
+      username:     "you@yourdomain.example"
+      password_env: "OX_PASSWORD"
+      folder_id:    ""   # leave empty to auto-discover your default calendar
+
+invite_from_calendar: "personal"
+
+notifications:
+  smtp:
+    enabled: false   # set true and fill the fields below for self-email on booking
+    host: "smtp.YOUR-HOSTER.example"
+    port: 587
+    username: "you@yourdomain.example"
+    password_env: "OX_PASSWORD"   # same credential on most providers
+    from: "you@yourdomain.example"
+    to: ["you@yourdomain.example"]
+    start_tls: true
+
+availability:
+  working_days: [mon, tue, wed, thu, fri]
+  working_hours: { start: "09:00", end: "17:00" }
+  slot_granularity_minutes: 15
+  min_notice_hours: 24
+  max_horizon_days: 14
+  buffer_minutes: 0
+  rules:
+    avoid_lunch:               { enabled: true, start: "12:00", end: "13:00", penalty: 50 }
+    avoid_back_to_back:        { enabled: true, gap_minutes: 15, penalty: 30 }
+    avoid_long_busy_stretches: { enabled: true, max_stretch_minutes: 240, penalty_per_30min_over: 20 }
+    prefer_mornings:           { enabled: false, penalty: 10 }
