@@ -10,6 +10,10 @@
 server:
   listen: ":8080"
   public_base_url: "http://localhost:8080"
+  # On hosts with no persistent disk (e.g. DigitalOcean App Platform), pin the
+  # booking link so it survives restarts. Prefer the MP_SERVER_CAPABILITY_TOKEN
+  # env var (a secret) over putting it here. Generate with: openssl rand -hex 32
+  # capability_token: ""
 
 data_dir: ".scratch/data-ox"
 

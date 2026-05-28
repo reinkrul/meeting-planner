@@ -38,6 +38,15 @@ If you have access to actual billing for this session, please overwrite the toke
 | `ics_url` read-only provider | ~25 min | 2 | New provider that fetches an ICS feed over HTTP (e.g. Google Calendar's "Secret iCal URL"). Recurring events expanded via `teambition/rrule-go`. In-memory TTL cache. Added `CalendarConfig.Writable()` capability + validation that `invite_from_calendar` references a writable provider. User wired two of their Google personal calendars into the running Hostnet instance — both now block slots alongside their OX calendar. |
 | Subpath mounting | ~15 min | 1 | Server now derives a URL prefix from `public_base_url`'s path component. `https://example.com/meeting` → router mounted at `/meeting`, all template-rendered URLs prefixed automatically, OAuth callbacks still constructed correctly. Verified live via a `:8082/meeting` test instance. README documents the proxy-side requirement (don't strip the prefix). |
 
+## Session 2 — 2026-05-28
+
+| Phase | Wall clock (approx) | User turns | Notes |
+|---|---|---|---|
+| OX session-expiry bug | ~10 min | 1 | Day-later return surfaced a real bug: OX signals an expired session as HTTP 200 + `SES-` error body, not 401, so the re-login path never fired. Fixed detection. Added `scripts/smoke.sh` (allow-listed) so endpoint checks stop triggering curl approval prompts — user explicitly asked for this. |
+| UI iterations | ~20 min | ~6 | Today/Tomorrow day labels; reworded "less ideal" copy to be config-agnostic ("more likely to be moved/cancelled"); htmx `show:` scroll to slots on search; flash-highlight on the loaded section (border + padding + glow, respects reduced-motion). All conversational/screenshot-driven. |
+| Capability token pinning | ~25 min | 3 | For DigitalOcean App Platform (ephemeral FS wipes state.json → booking link rotated every deploy). **User caught a design smell**: AI's first spec copied the `_env` indirection convention; user asked "why _env? everything's configurable via env vars already". Correct — `_env` only earns its keep for secrets inside the `calendars[]` list (generic walker skips struct slices). Switched to a plain `server.capability_token` field set via `MP_SERVER_CAPABILITY_TOKEN`. Pinned token overrides disk + survives reload; rotate disabled when pinned. Tests added (store + validate — first tests in those packages). Verified `${APP_URL}` DO bindable from docs (didn't guess) → no code needed for public_base_url, just bind it in the app spec. |
+| Stale-binary gotcha | ~2 min | 0 | First pinning test "failed" because `go build ./...` doesn't update `.scratch/bin/meeting-planner` (only `scripts/build.sh`/`run.sh` do). Rebuilt, then it worked. Worth a mental note: always rebuild via the script before testing the binary. |
+
 **Cumulative so far:**
 
 | Metric | Value | Confidence |

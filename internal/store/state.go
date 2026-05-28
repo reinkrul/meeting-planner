@@ -24,10 +24,14 @@ import (
 // This makes CLI subcommands (rotate-capability, reauth) visible to a
 // running server without restart, at the cost of an os.Stat per accessor.
 type State struct {
-	path     string
-	mu       sync.Mutex
-	data     stateData
-	loadedAt time.Time
+	path string
+	// seedToken, when non-empty, pins the capability token: it overrides
+	// whatever is on disk and survives reloads. Used on ephemeral-filesystem
+	// hosts where state.json is wiped on restart.
+	seedToken string
+	mu        sync.Mutex
+	data      stateData
+	loadedAt  time.Time
 }
 
 type stateData struct {
@@ -39,9 +43,12 @@ type calendarState struct {
 	OAuthToken *oauth2.Token `json:"oauth_token,omitempty"`
 }
 
-// Open loads (or creates) the state file at <dataDir>/state.json. On first
-// boot it generates a fresh capability token.
-func Open(dataDir string) (*State, error) {
+// Open loads (or creates) the state file at <dataDir>/state.json.
+//
+// seedToken, when non-empty, pins the capability token: it overrides whatever
+// is on disk and is re-applied on every reload. When empty, a random token is
+// generated on first boot and persisted (the original behavior).
+func Open(dataDir, seedToken string) (*State, error) {
 	if dataDir == "" {
 		return nil, errors.New("data_dir is required")
 	}
@@ -49,12 +56,12 @@ func Open(dataDir string) (*State, error) {
 		return nil, fmt.Errorf("create data dir: %w", err)
 	}
 	path := filepath.Join(dataDir, "state.json")
-	s := &State{path: path, data: stateData{Calendars: map[string]calendarState{}}}
+	s := &State{path: path, seedToken: seedToken, data: stateData{Calendars: map[string]calendarState{}}}
 
 	info, err := os.Stat(path)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		tok, err := newCapabilityToken()
+		tok, err := s.initialToken()
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +83,15 @@ func Open(dataDir string) (*State, error) {
 			s.data.Calendars = map[string]calendarState{}
 		}
 		s.loadedAt = info.ModTime()
-		if s.data.CapabilityToken == "" {
+		// Pin the seed token (authoritative) or backfill a random one.
+		if s.seedToken != "" {
+			if s.data.CapabilityToken != s.seedToken {
+				s.data.CapabilityToken = s.seedToken
+				if err := s.writeLocked(); err != nil {
+					return nil, err
+				}
+			}
+		} else if s.data.CapabilityToken == "" {
 			tok, err := newCapabilityToken()
 			if err != nil {
 				return nil, err
@@ -88,6 +103,14 @@ func Open(dataDir string) (*State, error) {
 		}
 	}
 	return s, nil
+}
+
+// initialToken returns the seed token if pinned, else a fresh random one.
+func (s *State) initialToken() (string, error) {
+	if s.seedToken != "" {
+		return s.seedToken, nil
+	}
+	return newCapabilityToken()
 }
 
 // reloadIfChangedLocked re-reads state.json when its mtime is newer than the
@@ -113,6 +136,11 @@ func (s *State) reloadIfChangedLocked() {
 	}
 	s.data = data
 	s.loadedAt = info.ModTime()
+	// OAuth-token changes from disk are picked up, but the pinned capability
+	// token always wins.
+	if s.seedToken != "" {
+		s.data.CapabilityToken = s.seedToken
+	}
 }
 
 // CapabilityToken returns the current capability token.
@@ -124,14 +152,17 @@ func (s *State) CapabilityToken() string {
 }
 
 // RotateCapabilityToken generates a new capability token and persists it.
-// Returns the new token.
+// Returns the new token. Errors when the token is pinned via config.
 func (s *State) RotateCapabilityToken() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.seedToken != "" {
+		return "", errors.New("capability token is pinned via server.capability_token (MP_SERVER_CAPABILITY_TOKEN); rotate by changing that value instead")
+	}
 	tok, err := newCapabilityToken()
 	if err != nil {
 		return "", err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.reloadIfChangedLocked()
 	s.data.CapabilityToken = tok
 	if err := s.writeLocked(); err != nil {

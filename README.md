@@ -156,6 +156,7 @@ Three sources, each overrides the previous:
    |---|---|
    | `server.listen` | `MP_SERVER_LISTEN` |
    | `server.public_base_url` | `MP_SERVER_PUBLIC_BASE_URL` |
+   | `server.capability_token` | `MP_SERVER_CAPABILITY_TOKEN` |
    | `owner.display_name` | `MP_OWNER_DISPLAY_NAME` |
    | `owner.timezone` | `MP_OWNER_TIMEZONE` |
    | `availability.working_hours.start` | `MP_AVAILABILITY_WORKING_HOURS_START` |
@@ -202,6 +203,35 @@ The running server picks up changes to `state.json` via mtime, so the CLI comman
 `/admin` is enabled **only** while at least one OAuth-requiring calendar lacks tokens. It returns 404 the rest of the time — there is no admin password (the setup window is bounded by you triggering it).
 
 ---
+
+## Stateless / ephemeral-filesystem hosting
+
+By default the capability token (your booking link) is randomly generated on first boot and persisted to `<data_dir>/state.json`. On hosts with no persistent disk (e.g. **DigitalOcean App Platform**, Heroku, most "deploy from git" PaaS), that file is wiped on every deploy/restart, so the link would rotate constantly.
+
+Pin it instead:
+
+```
+# generate once
+openssl rand -hex 32
+# then set as a SECRET env var on the platform
+MP_SERVER_CAPABILITY_TOKEN=<the 64-char hex string>
+```
+
+With it set, the booking link is stable across restarts and `rotate-capability` is disabled (rotate by changing the env value). Treat the token as a secret — it grants booking + `/freebusy` access. Inject it as an encrypted/secret env var; don't commit it to YAML.
+
+This is the only stateful concern for OX/CalDAV/ICS setups. (Google OAuth deployments also need a persistent `data_dir` for refresh tokens, so they're not a fit for fully-ephemeral hosting unless you re-`/admin` after each deploy.)
+
+### DigitalOcean App Platform
+
+Set these as component environment variables (mark the token **encrypted/secret**):
+
+| Variable | Value | Notes |
+|---|---|---|
+| `MP_SERVER_PUBLIC_BASE_URL` | `${APP_URL}` | DO bindable — resolves to your app's real URL at runtime |
+| `MP_SERVER_CAPABILITY_TOKEN` | `<openssl rand -hex 32>` | pins the booking link across deploys |
+| `OX_PASSWORD` (or provider secret) | your password | as required by your calendar provider |
+
+`${APP_URL}` is a DigitalOcean bindable variable, substituted at deploy — you don't need to know the URL in advance. (Bindable vars resolve at runtime only for Dockerfile components, which is when we read config, so this works.)
 
 ## Deploying behind a reverse proxy (subpath)
 

@@ -34,6 +34,13 @@ type SMTPConfig struct {
 type ServerConfig struct {
 	Listen        string `yaml:"listen"`
 	PublicBaseURL string `yaml:"public_base_url"`
+	// CapabilityToken optionally pins the capability token (the booking link).
+	// When set it overrides whatever is on disk and survives restarts —
+	// required on hosts with an ephemeral filesystem (e.g. DigitalOcean App
+	// Platform) where state.json doesn't persist. It is a secret; prefer
+	// injecting it via the MP_SERVER_CAPABILITY_TOKEN env var rather than
+	// committing it to YAML. Generate with `openssl rand -hex 32`.
+	CapabilityToken string `yaml:"capability_token"`
 }
 
 type OwnerConfig struct {

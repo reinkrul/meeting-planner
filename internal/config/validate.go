@@ -27,6 +27,9 @@ func Validate(cfg *Config) error {
 	if u, err := url.Parse(cfg.Server.PublicBaseURL); err != nil || u.Scheme == "" || u.Host == "" {
 		return fmt.Errorf("server.public_base_url is not a valid URL: %q", cfg.Server.PublicBaseURL)
 	}
+	if t := cfg.Server.CapabilityToken; t != "" && len(t) < 16 {
+		return fmt.Errorf("server.capability_token is too short (min 16 chars; generate with `openssl rand -hex 32`)")
+	}
 	if cfg.DataDir == "" {
 		return fmt.Errorf("data_dir is required")
 	}

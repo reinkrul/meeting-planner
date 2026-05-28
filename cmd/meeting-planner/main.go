@@ -38,7 +38,7 @@ func main() {
 	if err != nil {
 		fatal("config: %v", err)
 	}
-	st, err := store.Open(cfg.DataDir)
+	st, err := store.Open(cfg.DataDir, cfg.Server.CapabilityToken)
 	if err != nil {
 		fatal("state: %v", err)
 	}
