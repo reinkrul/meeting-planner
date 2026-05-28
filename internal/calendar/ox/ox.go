@@ -206,41 +206,35 @@ func (p *Provider) ensureFolder(ctx context.Context) error {
 	return nil
 }
 
-// doJSON issues an authenticated request. On 401 (or expired session), it
-// re-logs in once and retries.
+// doJSON issues an authenticated request. OX signals an expired session in
+// two ways: an HTTP 401, or (more commonly) HTTP 200 with an error body whose
+// code is in the SES- category. Either way we drop the session, re-login, and
+// retry once.
 func (p *Provider) doJSON(ctx context.Context, method, path string, query map[string]string, body, out any) error {
 	if err := p.ensureSession(ctx); err != nil {
 		return err
 	}
-	resp, err := p.rawDo(ctx, method, path, query, body)
+
+	status, raw, err := p.rawDoBytes(ctx, method, path, query, body)
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		_ = resp.Body.Close()
-		// Drop session, re-login, retry once.
-		p.mu.Lock()
-		p.sessionID = ""
-		p.mu.Unlock()
+	if status == http.StatusUnauthorized || isSessionExpired(raw) {
+		p.clearSession()
 		if err := p.ensureSession(ctx); err != nil {
 			return err
 		}
-		resp, err = p.rawDo(ctx, method, path, query, body)
+		status, raw, err = p.rawDoBytes(ctx, method, path, query, body)
 		if err != nil {
 			return err
 		}
 	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode/100 != 2 {
+	if status/100 != 2 {
 		snippet := strings.TrimSpace(string(raw))
 		if len(snippet) > 300 {
 			snippet = snippet[:300] + "…"
 		}
-		return fmt.Errorf("ox: HTTP %d: %s", resp.StatusCode, snippet)
+		return fmt.Errorf("ox: HTTP %d: %s", status, snippet)
 	}
 	if out != nil && len(raw) > 0 {
 		if err := json.Unmarshal(raw, out); err != nil {
@@ -248,6 +242,40 @@ func (p *Provider) doJSON(ctx context.Context, method, path string, query map[st
 		}
 	}
 	return nil
+}
+
+// rawDoBytes performs the request and returns status + body.
+func (p *Provider) rawDoBytes(ctx context.Context, method, path string, query map[string]string, body any) (int, []byte, error) {
+	resp, err := p.rawDo(ctx, method, path, query, body)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if err != nil {
+		return 0, nil, err
+	}
+	return resp.StatusCode, raw, nil
+}
+
+func (p *Provider) clearSession() {
+	p.mu.Lock()
+	p.sessionID = ""
+	p.mu.Unlock()
+}
+
+// isSessionExpired detects OX's session-category error in a 200 body.
+func isSessionExpired(raw []byte) bool {
+	var e struct {
+		Error string `json:"error"`
+		Code  string `json:"code"`
+	}
+	if json.Unmarshal(raw, &e) != nil {
+		return false
+	}
+	// OX session errors carry codes like "SES-0203". The "Please login again"
+	// text is the user-facing message for that category.
+	return strings.HasPrefix(e.Code, "SES-")
 }
 
 func (p *Provider) rawDo(ctx context.Context, method, path string, query map[string]string, body any) (*http.Response, error) {
