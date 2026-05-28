@@ -89,7 +89,11 @@ func (p *Provider) FreeBusy(ctx context.Context, from, to time.Time) ([]calendar
 	var out []calendar.BusyBlock
 	for _, e := range resp.Data {
 		for _, t := range e.FreeBusyTime {
-			if !strings.EqualFold(t.FBType, "BUSY") && !strings.EqualFold(t.FBType, "BUSY-UNAVAILABLE") {
+			// RFC 5545 FBTYPE: every BUSY* variant (BUSY, BUSY-UNAVAILABLE,
+			// BUSY-TENTATIVE) occupies the interval; only FREE is available.
+			// Tentative still blocks — OX marks an accepted event tentative
+			// when another attendee hasn't responded, but the time is taken.
+			if !strings.HasPrefix(strings.ToUpper(t.FBType), "BUSY") {
 				continue
 			}
 			out = append(out, calendar.BusyBlock{
