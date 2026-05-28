@@ -47,24 +47,33 @@ If you have access to actual billing for this session, please overwrite the toke
 | Capability token pinning | ~25 min | 3 | For DigitalOcean App Platform (ephemeral FS wipes state.json → booking link rotated every deploy). **User caught a design smell**: AI's first spec copied the `_env` indirection convention; user asked "why _env? everything's configurable via env vars already". Correct — `_env` only earns its keep for secrets inside the `calendars[]` list (generic walker skips struct slices). Switched to a plain `server.capability_token` field set via `MP_SERVER_CAPABILITY_TOKEN`. Pinned token overrides disk + survives reload; rotate disabled when pinned. Tests added (store + validate — first tests in those packages). Verified `${APP_URL}` DO bindable from docs (didn't guess) → no code needed for public_base_url, just bind it in the app spec. |
 | Stale-binary gotcha | ~2 min | 0 | First pinning test "failed" because `go build ./...` doesn't update `.scratch/bin/meeting-planner` (only `scripts/build.sh`/`run.sh` do). Rebuilt, then it worked. Worth a mental note: always rebuild via the script before testing the binary. |
 
-**Cumulative (end of Session 2):**
+**Cumulative (end of Session 2) — actuals from `/usage`:**
 
-| Metric | Value | Confidence |
+| Metric | Value | Source |
 |---|---|---|
-| Wall-clock elapsed | Session 1 ~3h + Session 2 ~1h ≈ **4h** active building | medium |
-| User active interaction | ~1.5–2.5h (estimate; lots of short conversational turns) | low |
-| Lines of Go (non-test) | **4,212** | exact |
+| **API-equivalent cost** | **$152.34** (notional — *not* billed; built on a flat €90/mo Max subscription) | `/usage` |
+| API compute time | 2h 34m 47s | `/usage` |
+| Wall-clock span | ~25h (spanned overnight across two days) | `/usage` |
+| Code changes | +7,728 / −576 lines (includes rewrites, not just net) | `/usage` |
+| Lines of Go (non-test, final) | 4,212 | exact |
 | Lines of Go (test) | 668 (28 test funcs) | exact |
 | HTML templates | 7 | exact |
 | Calendar providers | 5 (google, ics_file, caldav, ox, ics_url) | exact |
 | Signed commits pushed | 7 | exact |
 | Bugs caught by automated tests | 0 | — |
 | Bugs caught by manual/live testing | 3 (state cache coherence; OX 401-vs-200 session expiry; all-day TRANSP) | exact |
-| Estimated input tokens | high six figures, heavy prompt-cache reuse | low |
-| Estimated output tokens | low-mid six figures | low |
-| Estimated cost (Opus 4.7) | **verify against billing dashboard** | unknown |
 
-> The token/cost rows are the weakest numbers in this doc — the runtime doesn't expose them to the agent. Pull the real figures from the Anthropic console before publishing.
+**Token usage (`/usage`):**
+
+| Model | Input | Output | Cache read | Cache write | Cost |
+|---|---|---|---|---|---|
+| claude-opus-4-7 (main) | 22.8k | 527.3k | 256.3M | 1.7M | $152.15 |
+| claude-haiku-4-5 (subagents) | 106.4k | 3.0k | 0 | 0 (+7 web searches) | $0.19 |
+
+Notes worth a paragraph in the post:
+- **Output tokens dominate the bill that you control** (527k output on Opus); **cache reads dominate the volume** (256M) but are cheap per-token — without prompt caching this long multi-turn session would have been wildly more expensive. The whole conversation gets re-read on essentially every turn; caching is what makes that affordable.
+- **The agent's own cost estimate ($5–15) was 10–30× too low.** It cannot see its token usage from inside the session and badly under-counted the cumulative cache-read volume of a day-long, many-turn collaboration. Don't trust an agent's self-estimate of cost; read `/usage`.
+- Fresh input tokens are tiny (22.8k) relative to cache reads — almost everything the model "read" each turn was served from cache.
 
 ## Blog-worthy moments
 
@@ -105,6 +114,11 @@ Distilled from the two sessions. These are the points worth building the post ar
 7. **"Dead end" deserves one more probe.** The Hostnet CalDAV 401 looked terminal; the user's "look deeper" turned it into a working integration via a different protocol (OX HTTP API). AI is biased toward the first explanation that fits the symptom.
 
 8. **Tooling friction compounds — fix it early.** Per-command approval prompts and `/tmp` log paths were a drag until the user asked for `scripts/*` wrappers + an allow-list. After that, iteration was much faster. Investing in a smooth inner loop pays off across a long session.
+
+9. **The economics, with the right denominator.** `/usage` reports **$152.34**, but that's the **API-equivalent** value of the tokens — *not* what was paid. This was built on a **Claude Max subscription (€90/month, flat)**, where usage counts against rate limits, not a per-token bill. So:
+   - **Actual out-of-pocket:** the flat €90/month (this project was a fraction of that month's rate-limit budget).
+   - **Notional value (API pay-as-you-go):** $152.34 — useful for "what would this cost a team on API billing."
+   Either way the framing for the post is the same: from empty directory to a deployed, 5-provider, tested, documented, MIT-licensed app — including dead-end detours — for roughly *one engineer-afternoon of steering* plus a flat subscription. Cheap against loaded human-hours; not free; and a real slice (the CalDAV detours) was spent on exploration that didn't ship. The agent also **could not estimate this itself** — its guess was 10–30× low; only `/usage` had the truth.
 
 ## Things to add later
 
