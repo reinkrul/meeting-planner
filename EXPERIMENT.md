@@ -47,20 +47,24 @@ If you have access to actual billing for this session, please overwrite the toke
 | Capability token pinning | ~25 min | 3 | For DigitalOcean App Platform (ephemeral FS wipes state.json → booking link rotated every deploy). **User caught a design smell**: AI's first spec copied the `_env` indirection convention; user asked "why _env? everything's configurable via env vars already". Correct — `_env` only earns its keep for secrets inside the `calendars[]` list (generic walker skips struct slices). Switched to a plain `server.capability_token` field set via `MP_SERVER_CAPABILITY_TOKEN`. Pinned token overrides disk + survives reload; rotate disabled when pinned. Tests added (store + validate — first tests in those packages). Verified `${APP_URL}` DO bindable from docs (didn't guess) → no code needed for public_base_url, just bind it in the app spec. |
 | Stale-binary gotcha | ~2 min | 0 | First pinning test "failed" because `go build ./...` doesn't update `.scratch/bin/meeting-planner` (only `scripts/build.sh`/`run.sh` do). Rebuilt, then it worked. Worth a mental note: always rebuild via the script before testing the binary. |
 
-**Cumulative so far:**
+**Cumulative (end of Session 2):**
 
 | Metric | Value | Confidence |
 |---|---|---|
-| Wall-clock elapsed | ~1h 30m | high |
-| User active interaction | ~25–40 min | low (estimate) |
-| User turns | ~16 | high |
-| Lines of Go produced | 3,362 (15 files) + 7 templates | exact |
-| Tests written / passing | 13 / 13 | exact |
-| Bugs caught by tests | 0 | (none of the bugs that surfaced were table-test-shaped) |
-| Bugs caught by manual smoke | 1 (state store cache coherence) | exact |
-| Estimated input tokens | ~300–500k (heavy prompt-cache hits) | low |
-| Estimated output tokens | ~80–120k | low |
-| Estimated cost (Opus 4.7) | ~$5–$15 USD | low — verify against billing |
+| Wall-clock elapsed | Session 1 ~3h + Session 2 ~1h ≈ **4h** active building | medium |
+| User active interaction | ~1.5–2.5h (estimate; lots of short conversational turns) | low |
+| Lines of Go (non-test) | **4,212** | exact |
+| Lines of Go (test) | 668 (28 test funcs) | exact |
+| HTML templates | 7 | exact |
+| Calendar providers | 5 (google, ics_file, caldav, ox, ics_url) | exact |
+| Signed commits pushed | 7 | exact |
+| Bugs caught by automated tests | 0 | — |
+| Bugs caught by manual/live testing | 3 (state cache coherence; OX 401-vs-200 session expiry; all-day TRANSP) | exact |
+| Estimated input tokens | high six figures, heavy prompt-cache reuse | low |
+| Estimated output tokens | low-mid six figures | low |
+| Estimated cost (Opus 4.7) | **verify against billing dashboard** | unknown |
+
+> The token/cost rows are the weakest numbers in this doc — the runtime doesn't expose them to the agent. Pull the real figures from the Anthropic console before publishing.
 
 ## Blog-worthy moments
 
@@ -77,10 +81,35 @@ If you have access to actual billing for this session, please overwrite the toke
 - **Hostnet investigation paid off after the user pushed back.** AI's first read on the Hostnet 401 was "your plan doesn't include CalDAV — dead end". User said "look deeper". Deeper probing (principal namespace, session cookies, OX HTTP API discovery) revealed that the OX *web API* worked fine even though CalDAV was gated, leading to a working integration via a different protocol entirely. The takeaway: when AI declares something a dead end, it's worth probing once more before accepting it — AI is biased toward the first explanation that fits the symptom.
 - **UX work is fast and conversational with screenshots in the loop.** The Calendly-style redesign happened over ~10 quick turns: ship → user screenshots → tweak → repeat. The bottleneck was AI noticing the right things to fix, not implementation time. Specific misses AI made and user caught: chip heights different between rows; first chip in each day off because of a generic `label` margin rule; "less ideal" tag visually competing with the time itself; UI feeling too monochrome in dark mode. None were complex fixes; all required the user to flag them. AI's self-review of its own UI output is weak.
 - **Repo readiness is its own task.** Going from "works on my machine" to "publishable on GitHub" took ~15 min by itself even after the code was done: renaming personal-bearing configs to `.example.yaml`, fixing a misleading example, scrubbing the user's name from non-license/non-experiment files, restructuring README into a how-to, splitting protocol details into a separate doc, MIT license, gitignore audit, gh-CLI push, description + topics. None individually hard, all easy to forget without a checklist.
+- **AI cargo-culted its own convention.** For the pinned capability token, AI's first spec used the `_env` indirection (a field naming another env var) because the codebase already used it for `password_env`/`client_id_env`. User: "why _env? everything's configurable via env vars already." Correct — `_env` only earns its keep for secrets *inside the `calendars[]` list*, which the generic env walker skips. For a top-level scalar the plain field + `MP_SERVER_*` override is simpler. AI pattern-matched the existing convention without re-checking whether the reason for it applied.
+- **AI reached for a code fix when the right answer was configuration.** All-day Google events weren't blocking (Google exports them `TRANSP:TRANSPARENT`). AI proposed making the app override transparency for all-day events — a behavior change with edge cases (holidays/birthdays). User: "Stop, I'll mark them blocked in my agenda." The standards-honoring answer (set the event Busy at the source) was simpler and didn't expand the app's surface. AI's instinct to solve in code is a bias worth watching.
+- **Calibration improved within the project.** After being confidently wrong about Google CalDAV (session 1), AI changed behavior later: it *verified* `${APP_URL}` from DigitalOcean's docs before recommending it, and *live-tested* the OX session-expiry behavior rather than asserting it. The earlier miss became an explicit "don't guess verifiable facts" habit — visible course-correction, not just a one-off apology.
+- **APIs lie about status codes.** The OX session-expiry bug: the server returns HTTP 200 with a `SES-` error in the JSON body when the session is dead, not a 401. The retry-on-401 logic never fired, so a server left running overnight broke every request. Only a day-later return surfaced it. Lesson: don't trust HTTP status alone for APIs that wrap errors in 200 bodies.
+
+## Key takeaways (blog spine)
+
+Distilled from the two sessions. These are the points worth building the post around.
+
+1. **AI is strongest at uninterrupted breadth.** Plan-approved → tests-green in one unbroken stretch produced ~3,300 lines across 13 components with no hand-holding. Plumbing a 5th calendar provider, wiring config/validation/env/factory/docs consistently — this mechanical breadth is where it shines and saves the most time.
+
+2. **The human supplied judgment, not labor.** Almost every good decision came from a short user nudge: capability URLs over shared secrets, drop the encryption, KISS the admin gate, "why _env?", "look deeper" at Hostnet, "mark them Busy myself." The AI executed; the user steered. The ratio (minutes of user input → hours of output) is the headline.
+
+3. **AI's self-review is weakest on UX and taste.** Jargon ("capability URL"), awkward microcopy ("no penalties"), uneven chip heights, monochrome dark mode — all shipped until the user looked. Screenshots in the loop made this fast to fix, but the AI did not catch them itself. Functional ≠ good; a human eye closed that gap.
+
+4. **Verification caught what tests didn't.** 0 bugs caught by the 28 tests; 3 real bugs caught by live/manual testing (cache coherence, session expiry, all-day transparency). The bugs lived in integration seams and external-API behavior — exactly where unit tests are thin. Live smoke-testing against the real calendar was the highest-value QA.
+
+5. **AI defaults toward "production-grade" and "best-known."** Encryption at rest, Google OAuth + Cloud project, the `_env` convention, an app-side fix for all-day events — repeatedly the first proposal was the heavier, more "correct-looking" one. The user repeatedly wanted the lighter path. Worth setting "MVP/KISS" as an explicit standing instruction early (we did, and still had to reinforce it).
+
+6. **Confidence is uncorrelated with correctness on stale facts.** AI was equally confident about "Calendar API is free" (true) and "App Password works for Google CalDAV" (false, deprecated years ago). For anything externally verifiable, checking docs / hitting the endpoint beat asserting — and the project visibly got better at this after the first miss.
+
+7. **"Dead end" deserves one more probe.** The Hostnet CalDAV 401 looked terminal; the user's "look deeper" turned it into a working integration via a different protocol (OX HTTP API). AI is biased toward the first explanation that fits the symptom.
+
+8. **Tooling friction compounds — fix it early.** Per-command approval prompts and `/tmp` log paths were a drag until the user asked for `scripts/*` wrappers + an allow-list. After that, iteration was much faster. Investing in a smooth inner loop pays off across a long session.
 
 ## Things to add later
 
-- Token and cost numbers from the actual Anthropic billing dashboard.
-- User-self-reported active interaction time (more accurate than my estimate).
-- Outcome of Google OAuth path (Path B from the plan) — whether it works first try.
-- Whether the federation/preferences design holds up once real calendars are connected.
+- Token and cost numbers from the actual Anthropic billing dashboard (the one figure the agent genuinely can't produce).
+- User-self-reported active interaction time (more accurate than the estimate).
+- Outcome of the DigitalOcean deploy (does `${APP_URL}` + pinned capability token behave as designed in production?).
+- A real second meeting-planner instance run by another person, to exercise federation end-to-end (so far only tested with a local `dev2` peer).
+- A screenshot or two of the final booking UI (light + dark) for the post.
