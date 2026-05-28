@@ -65,16 +65,21 @@
     html, body {
       margin: 0; padding: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      color: var(--text); background: var(--bg);
+      color: var(--text);
       font-size: 15px; line-height: 1.5;
     }
-    body {
+    /* Paint the background on the root element so it propagates to the whole
+       canvas — including the area above .container's collapsed top margin and
+       any overscroll. Painting it on body instead leaves a flat strip up top
+       where body's background stops and the root's bare colour shows through. */
+    html {
       background:
         var(--bg-vignette, none),
         var(--bg);
       background-attachment: fixed;
       min-height: 100vh;
     }
+    body { min-height: 100vh; }
     .container { max-width: 640px; margin: 2.5rem auto; padding: 0 1.25rem; }
     h1 { font-size: 1.625rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 0.5rem; }
     h2 { font-size: 1.125rem; font-weight: 600; margin: 1.75rem 0 0.5rem; }
