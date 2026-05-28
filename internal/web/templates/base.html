@@ -206,6 +206,24 @@
     .actions { margin-top: 1.25rem; }
     .actions button + button { margin-left: 0.5rem; }
 
+    /* Briefly highlight the freshly-loaded slot section. Runs once on insert
+       (htmx swaps fresh DOM, so the animation replays each search). Quick fade
+       in to an accent tint, slow gentle fade out. */
+    .just-loaded {
+      border-radius: var(--radius);
+      border: 1px solid transparent;   /* reserves space; visible only during flash */
+      padding: 1rem 1.25rem;
+      animation: flash-highlight 2s ease-out 1;
+    }
+    @keyframes flash-highlight {
+      0%   { background: transparent;        border-color: transparent;  box-shadow: 0 0 0 0 transparent; }
+      8%   { background: var(--accent-tint); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-tint); }
+      100% { background: transparent;        border-color: transparent;  box-shadow: 0 0 0 0 transparent; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .just-loaded { animation: none; }
+    }
+
     .hero {
       text-align: center; padding: 1.5rem 0;
     }

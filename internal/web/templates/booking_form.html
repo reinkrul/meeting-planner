@@ -2,7 +2,7 @@
 <h1>Book a meeting with {{.OwnerName}}</h1>
 <p>Tell us a little about you and the meeting, and we'll find times that work.</p>
 
-<form hx-post="{{.SlotsURL}}" hx-target="#slots" hx-swap="innerHTML">
+<form hx-post="{{.SlotsURL}}" hx-target="#slots" hx-swap="innerHTML show:#slots:top">
   <div class="card">
     <label for="initiator_name">Your name</label>
     <input id="initiator_name" type="text" name="initiator_name" required placeholder="Jane Doe" value="{{.InitiatorName}}">

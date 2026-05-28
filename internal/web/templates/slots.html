@@ -8,8 +8,9 @@
     <p style="margin: 0; color: var(--text);">No times match all attendees within the next two weeks. Try a shorter meeting or remove an attendee.</p>
   </div>
 {{else}}
+  <div class="just-loaded">
   <h2>Pick a time</h2>
-  <p>Tap a day to see its available times. Times marked <em>· less ideal</em> overlap a lunch break or sit between back-to-back meetings.</p>
+  <p>Tap a day to see its available times. Times marked <em>less ideal</em> are less convenient for one or more participants, so a meeting booked there is a bit more likely to be moved or cancelled later.</p>
 
   <form hx-post="{{.ConfirmURL}}" hx-target="body" hx-swap="innerHTML">
     <input type="hidden" name="initiator_name" value="{{.InitiatorName}}">
@@ -44,5 +45,6 @@
       <button type="submit" class="primary">Confirm booking</button>
     </div>
   </form>
+  </div>
 {{end}}
 {{end}}

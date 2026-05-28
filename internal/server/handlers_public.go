@@ -227,6 +227,10 @@ type dayGroup struct {
 // the owner's display timezone. Days are emitted in chronological order;
 // slots within a day stay chronological.
 func groupSlotsByDay(slots []availability.ScoredCandidate, dur time.Duration, tz *time.Location) []dayGroup {
+	now := time.Now().In(tz)
+	today := now.Format("2006-01-02")
+	tomorrow := now.AddDate(0, 0, 1).Format("2006-01-02")
+
 	var days []dayGroup
 	byDate := map[string]int{} // date -> index into days
 	for _, sc := range slots {
@@ -235,8 +239,15 @@ func groupSlotsByDay(slots []availability.ScoredCandidate, dur time.Duration, tz
 		date := localStart.Format("2006-01-02")
 		idx, ok := byDate[date]
 		if !ok {
+			label := localStart.Format("Mon 2 Jan 2006")
+			switch date {
+			case today:
+				label = "Today · " + localStart.Format("Mon 2 Jan")
+			case tomorrow:
+				label = "Tomorrow · " + localStart.Format("Mon 2 Jan")
+			}
 			days = append(days, dayGroup{
-				Label: localStart.Format("Mon 2 Jan 2006"),
+				Label: label,
 				Date:  date,
 			})
 			idx = len(days) - 1

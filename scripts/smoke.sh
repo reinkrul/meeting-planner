@@ -53,6 +53,9 @@ DAYS=$(printf '%s' "$BODY" | grep -c '<details class="day"' || true)
 WARNS=$(printf '%s' "$BODY" | grep -oE 'class="warn">[^<]*' | sed 's/class="warn">//' || true)
 echo "  days offered:  $DAYS"
 echo "  slots offered: $SLOTS"
+echo "  day labels:"
+printf '%s' "$BODY" | grep -oE '<span>[^<]*<span class="count">[^<]*' \
+  | sed -E 's/<span>//; s/<span class="count">/ /' | sed 's/^/    - /' || true
 if [[ -n "$WARNS" ]]; then
   echo "  warnings:"
   printf '%s\n' "$WARNS" | sed 's/^/    - /'
